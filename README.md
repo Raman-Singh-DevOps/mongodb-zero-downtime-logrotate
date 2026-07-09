@@ -8,6 +8,40 @@
 
 ---
 
+## How the zero-downtime rotation works
+
+```mermaid
+flowchart TD
+    CRON["🕒 Root crontab<br/>0 18 * * 2 — Tue 18:00 UTC"] -->|fires on schedule| LR
+
+    LR["logrotate -f /etc/logrotate.custom/mongod<br/><i>isolated config → OS daily scan can't interfere</i>"]
+
+    LR --> RENAME["1 · Rename<br/>mongod.log → mongod.log-20260710"]
+    LR --> CREATE["2 · Create fresh mongod.log<br/>640 mongod:mongod"]
+    LR --> POST["3 · postrotate hook<br/>kill -SIGUSR1 mongod"]
+
+    POST --> REOPEN["mongod reopens log path<br/>logRotate: reopen in mongod.conf"]
+    REOPEN --> ZERO["✅ Zero downtime · no restart"]
+
+    RENAME -->|delaycompress: gzip previous rotation| GZ["mongod.log-20260703.gz<br/>~8× smaller"]
+
+    LR -.->|stdout + stderr via 2&gt;&amp;1| ERR{"/tmp/mongo_rotate_error.log"}
+    ERR -->|empty| OK["clean run ✅"]
+    ERR -->|MISSING| BUG["command never ran ⚠️<br/>(the 2&gt;&amp; typo bug)"]
+
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#7f1d1d;
+    class ZERO,OK good;
+    class BUG bad;
+```
+
+This diagram captures the three ideas that make the setup work: an **isolated
+config** so the OS scheduler can't interfere, a **`SIGUSR1` signal** so MongoDB
+reopens its log with zero downtime, and a **redirect to a known error file** so
+a *missing* file becomes the tell that the job never ran.
+
+---
+
 ## Step 1 — Why this setup exists in the first place
 
 MongoDB's `mongod.log` grows continuously — on a busy node, **tens of GB per
