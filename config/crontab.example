@@ -1,0 +1,13 @@
+# Custom MongoDB logrotate cron entry.
+#
+# Redirect stdout+stderr to a known file so a CLEAN run leaves an EMPTY file,
+# and a MISSING file becomes evidence the command never ran.
+#
+# The critical detail: the redirect MUST end in `2>&1`, not `2>&`.
+#   2>&   -> shell syntax error; the line dies before logrotate runs (silent failure)
+#   2>&1  -> stderr follows stdout into the log file (correct)
+#
+# Verify with:  crontab -l | cat -A     ( a correct line ends in  2>&1$ )
+
+# Every Thursday at 17:30 UTC
+30 17 * * 4 /usr/sbin/logrotate -f /etc/logrotate.custom/mongod > /tmp/mongo_rotate_error.log 2>&1

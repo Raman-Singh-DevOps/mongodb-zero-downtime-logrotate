@@ -1,0 +1,24 @@
+# /etc/logrotate.custom/mongod
+#
+# Zero-downtime MongoDB log rotation.
+# Requires `logRotate: reopen` under systemLog in /etc/mongod.conf so that
+# mongod reopens (not recreates) its log file when it receives SIGUSR1.
+
+/data/log/mongodb/mongod.log {
+    rotate 7            # keep 7 rotated files
+    dateext             # name rotated files with a date suffix (mongod.log-YYYYMMDD)
+    compress            # gzip rotated files to save disk
+    delaycompress       # compress on the NEXT run, so the newest rotation stays readable
+    missingok           # don't error if the log is temporarily absent
+    notifempty          # skip rotation if the log is empty
+    create 640 mongod mongod   # recreate the fresh log with correct owner/permissions
+    sharedscripts       # run postrotate once, not once per matched file
+
+    postrotate
+        # Tell mongod to reopen its log file — zero downtime, no restart.
+        /bin/kill -SIGUSR1 $(/usr/bin/pgrep mongod) 2>/dev/null || true
+        sleep 1
+        # Clean up 0-byte timestamped logs MongoDB can leave behind.
+        /usr/bin/find /data/log/mongodb/ -name "mongod.log.*T*" -size 0 -delete
+    endscript
+}
