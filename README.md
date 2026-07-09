@@ -123,9 +123,14 @@ downtime**:
 
 | File | What it does |
 |---|---|
+| [`SETUP.md`](SETUP.md) | **step-by-step setup guide** — every command explained, for setting this up on your own server |
 | [`config/mongod`](config/mongod) | logrotate config — zero-downtime rotation via `SIGUSR1`, `delaycompress`, 7-file retention |
 | [`config/crontab.example`](config/crontab.example) | the correct cron entry, with the `2>&1` redirect that actually works |
 | [`scripts/check-logrotate.sh`](scripts/check-logrotate.sh) | one-command health check — see Step 8 |
+
+> **Want to set this up yourself?** Follow [`SETUP.md`](SETUP.md) — it walks
+> through every step (isolate the config, signal MongoDB, schedule it safely)
+> and explains exactly what each command does.
 
 ## Step 8 — Turning the diagnosis into a reusable health check
 
